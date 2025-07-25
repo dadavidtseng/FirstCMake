@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 #include <concepts>  // C++20 concepts
-#include <format>    // C++20 formatting (需要較新的編譯器)
+// #include <format>    // C++20 formatting (需要較新的編譯器)
 
 //----------------------------------------------------------------------------------------------------
 // 實用函式宣告 - 使用 PascalCase 命名

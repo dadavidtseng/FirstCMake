@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cctype>
 #include <ranges>    // C++20 ranges
-#include <iterator>
 
 //----------------------------------------------------------------------------------------------------
 namespace Utils
