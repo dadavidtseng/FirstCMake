@@ -22,31 +22,57 @@ param(
 # Set console encoding to UTF-8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# Safe output function that works in all PowerShell hosts
+function Write-FormattedOutput {
+    param(
+        [string]$Message,
+        [ValidateSet('Info', 'Success', 'Warning', 'Error', 'Header', 'Verbose')]
+        [string]$Type = 'Info'
+    )
+
+    $prefix = switch ($Type) {
+        'Success' { '[SUCCESS] ' }
+        'Warning' { '[WARNING] ' }
+        'Error'   { '[ERROR] ' }
+        'Header'  { '' }
+        'Verbose' { '[VERBOSE] ' }
+        default   { '' }
+    }
+
+    $outputMessage = $prefix + $Message
+
+    switch ($Type) {
+        'Error'   { Write-Error $outputMessage }
+        'Warning' { Write-Warning $outputMessage }
+        'Verbose' { Write-Verbose $outputMessage }
+        default   { Write-Output $outputMessage }
+    }
+}
+
 # Show help information
 function Show-Help {
+    Write-FormattedOutput "CMake Build Script for FirstCMake" -Type Header
+    Write-FormattedOutput "=================================" -Type Header
     Write-Output ""
-    Write-Output "CMake Build Script for FirstCMake"
-    Write-Output "================================="
-    Write-Output ""
-    Write-Output "Usage:"
+    Write-FormattedOutput "Usage:" -Type Header
     Write-Output "  .\Build.ps1                              # Interactive mode"
     Write-Output "  .\Build.ps1 -All                         # Build all configurations"
     Write-Output "  .\Build.ps1 -Configuration Debug -Platform x64  # Build specific configuration"
     Write-Output "  .\Build.ps1 -Clean                       # Clean all build outputs"
     Write-Output "  .\Build.ps1 -Help                        # Show this help"
     Write-Output ""
-    Write-Output "Parameters:"
+    Write-FormattedOutput "Parameters:" -Type Header
     Write-Output "  -Configuration  Debug|Release            # Build configuration"
     Write-Output "  -Platform       x64|x86                  # Target platform"
     Write-Output "  -All                                      # Build all 4 configurations"
     Write-Output "  -Clean                                    # Clean build outputs"
     Write-Output "  -Help                                     # Show this help"
     Write-Output ""
-    Write-Output "Examples:"
+    Write-FormattedOutput "Examples:" -Type Header
     Write-Output "  .\Build.ps1 -Configuration Debug -Platform x64"
     Write-Output "  .\Build.ps1 -All"
     Write-Output ""
-    Write-Output "Output:"
+    Write-FormattedOutput "Output:" -Type Header
     Write-Output "  Executables: Run\CMake\"
     Write-Output "  Build files: Temporary\CMake\"
 }
@@ -56,58 +82,99 @@ function Remove-BuildOutput {
     [CmdletBinding(SupportsShouldProcess)]
     param()
 
-    Write-Output "========================================"
-    Write-Output "   Cleaning Build Outputs"
-    Write-Output "========================================"
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   Cleaning Build Outputs" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
 
     $dirsToClean = @("Run\CMake", "Temporary\CMake")
 
     foreach ($dir in $dirsToClean) {
         if (Test-Path $dir) {
             if ($PSCmdlet.ShouldProcess($dir, "Remove directory")) {
-                Write-Verbose "Cleaning: $dir"
+                Write-FormattedOutput "Cleaning: $dir" -Type Verbose
                 Remove-Item -Recurse -Force $dir
-                Write-Output "Cleaned: $dir"
+                Write-FormattedOutput "Cleaned: $dir" -Type Success
             }
         } else {
-            Write-Output "Already clean: $dir"
+            Write-FormattedOutput "Already clean: $dir" -Type Info
         }
     }
 
     Write-Output ""
-    Write-Output "Clean completed!"
+    Write-FormattedOutput "Clean completed!" -Type Success
 }
 
 # Interactive menu
 function Show-InteractiveMenu {
-    Write-Output "========================================"
-    Write-Output "   CMake Build Options"
-    Write-Output "========================================"
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   Available Build Options" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
     Write-Output ""
-    Write-Output "What would you like to build?"
+    Write-FormattedOutput "What would you like to build?" -Type Header
     Write-Output ""
     Write-Output "1. Build all configurations (Debug/Release x64/x86)"
+    Write-Output "   - This will build all 4 combinations and show a summary"
+    Write-Output ""
     Write-Output "2. Build Debug x64"
+    Write-Output "   - Debug build with full debugging symbols (64-bit)"
+    Write-Output ""
     Write-Output "3. Build Release x64"
+    Write-Output "   - Optimized release build (64-bit)"
+    Write-Output ""
     Write-Output "4. Build Debug x86"
+    Write-Output "   - Debug build with full debugging symbols (32-bit)"
+    Write-Output ""
     Write-Output "5. Build Release x86"
+    Write-Output "   - Optimized release build (32-bit)"
+    Write-Output ""
     Write-Output "6. Clean all outputs"
+    Write-Output "   - Remove all generated files and build directories"
+    Write-Output ""
     Write-Output "7. Exit"
+    Write-Output "   - Exit the build script"
     Write-Output ""
 
     do {
         $choice = Read-Host "Please select an option (1-7)"
 
         switch ($choice) {
-            "1" { return @{ Mode = "All" } }
-            "2" { return @{ Mode = "Single"; Config = "Debug"; Platform = "x64" } }
-            "3" { return @{ Mode = "Single"; Config = "Release"; Platform = "x64" } }
-            "4" { return @{ Mode = "Single"; Config = "Debug"; Platform = "x86" } }
-            "5" { return @{ Mode = "Single"; Config = "Release"; Platform = "x86" } }
-            "6" { return @{ Mode = "Clean" } }
-            "7" { return @{ Mode = "Exit" } }
+            "1" {
+                Write-Output ""
+                Write-FormattedOutput "Starting build for all configurations..." -Type Header
+                return @{ Mode = "All" }
+            }
+            "2" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Debug x64 build..." -Type Header
+                return @{ Mode = "Single"; Config = "Debug"; Platform = "x64" }
+            }
+            "3" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Release x64 build..." -Type Header
+                return @{ Mode = "Single"; Config = "Release"; Platform = "x64" }
+            }
+            "4" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Debug x86 build..." -Type Header
+                return @{ Mode = "Single"; Config = "Debug"; Platform = "x86" }
+            }
+            "5" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Release x86 build..." -Type Header
+                return @{ Mode = "Single"; Config = "Release"; Platform = "x86" }
+            }
+            "6" {
+                Write-Output ""
+                Write-FormattedOutput "Starting cleanup..." -Type Header
+                return @{ Mode = "Clean" }
+            }
+            "7" {
+                return @{ Mode = "Exit" }
+            }
             default {
-                Write-Warning "Invalid choice. Please select 1-7."
+                Write-Output ""
+                Write-FormattedOutput "Invalid choice '$choice'. Please select a number from 1 to 7." -Type Warning
+                Write-Output ""
             }
         }
     } while ($true)
@@ -129,9 +196,9 @@ function Build-SingleConfiguration {
     $targetName = "FirstCMake_$Config" + "_$Platform"
     $buildDir = "Temporary\CMake\$targetName"
 
-    Write-Output "========================================"
-    Write-Output "   Building: $targetName"
-    Write-Output "========================================"
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   Building: $targetName" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
 
     # Check if CMake is available
     try {
@@ -139,27 +206,28 @@ function Build-SingleConfiguration {
         if ($LASTEXITCODE -ne 0) {
             throw "CMake not found"
         }
-        Write-Output "CMake is available"
+        Write-FormattedOutput "CMake is available" -Type Success
     } catch {
-        Write-Error "CMake not found! Please install CMake first."
+        Write-FormattedOutput "CMake not found! Please install CMake first." -Type Error
         Write-Output "Download from: https://cmake.org/download/"
         return $false
     }
 
     # Check if CMakeLists.txt exists
     if (-not (Test-Path "CMakeLists.txt")) {
-        Write-Error "CMakeLists.txt not found in current directory!"
-        Write-Verbose "Current directory: $(Get-Location)"
+        Write-FormattedOutput "CMakeLists.txt not found in current directory!" -Type Error
+        Write-FormattedOutput "Current directory: $(Get-Location)" -Type Verbose
         return $false
     }
 
     # Create build directory
     if (Test-Path $buildDir) {
         if ($PSCmdlet.ShouldProcess($buildDir, "Remove old build directory")) {
-            Write-Verbose "Cleaning old build: $buildDir"
+            Write-FormattedOutput "Cleaning old build: $buildDir" -Type Verbose
             Remove-Item -Recurse -Force $buildDir
         }
     }
+
     if ($PSCmdlet.ShouldProcess($buildDir, "Create build directory")) {
         New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
     }
@@ -180,50 +248,52 @@ function Build-SingleConfiguration {
         $cmakeArgs += "-DCMAKE_BUILD_TYPE=$Config"
 
         Write-Output "Configuring..."
-        Write-Verbose "Command: cmake $($cmakeArgs -join ' ')"
+        Write-FormattedOutput "Command: cmake $($cmakeArgs -join ' ')" -Type Verbose
 
         # Run CMake configure
         if ($PSCmdlet.ShouldProcess("CMake", "Configure build")) {
             $configOutput = & cmake @cmakeArgs 2>&1
 
             if ($LASTEXITCODE -ne 0) {
-                Write-Error "Configuration failed!"
-                Write-Error "CMake output: $configOutput"
+                Write-FormattedOutput "Configuration failed!" -Type Error
+                Write-Output "CMake output:"
+                Write-Output $configOutput
                 return $false
             }
 
-            Write-Output "Configuration successful"
+            Write-FormattedOutput "Configuration successful" -Type Success
         }
 
         # Run build
         Write-Output "Building..."
-        Write-Verbose "Command: cmake --build . --config $Config"
+        Write-FormattedOutput "Command: cmake --build . --config $Config" -Type Verbose
 
         if ($PSCmdlet.ShouldProcess("CMake", "Build project")) {
             $buildOutput = & cmake --build . --config $Config 2>&1
 
             if ($LASTEXITCODE -ne 0) {
-                Write-Error "Build failed!"
-                Write-Error "Build output: $buildOutput"
+                Write-FormattedOutput "Build failed!" -Type Error
+                Write-Output "Build output:"
+                Write-Output $buildOutput
                 return $false
             }
 
-            Write-Output "Build successful: $targetName"
+            Write-FormattedOutput "Build successful: $targetName" -Type Success
         }
 
         # Check if executable was created and copied
         $exePath = "$originalLocation\Run\CMake\$targetName.exe"
         if (Test-Path $exePath) {
             $exeSize = [math]::Round((Get-Item $exePath).Length / 1KB, 1)
-            Write-Output "Executable created: Run\CMake\$targetName.exe ($exeSize KB)"
+            Write-FormattedOutput "Executable created: Run\CMake\$targetName.exe ($exeSize KB)" -Type Success
         } else {
-            Write-Warning "Executable not found at: Run\CMake\$targetName.exe"
+            Write-FormattedOutput "Executable not found at: Run\CMake\$targetName.exe" -Type Warning
         }
 
         return $true
 
     } catch {
-        Write-Error "Build failed: $($_.Exception.Message)"
+        Write-FormattedOutput "Build failed: $($_.Exception.Message)" -Type Error
         return $false
     } finally {
         Set-Location $originalLocation
@@ -235,9 +305,9 @@ function Build-AllConfiguration {
     [CmdletBinding(SupportsShouldProcess)]
     param()
 
-    Write-Output "========================================"
-    Write-Output "   Building All Configurations"
-    Write-Output "========================================"
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   Building All Configurations" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
 
     $configurations = @(
         @{ Config = "Debug"; Platform = "x64" },
@@ -272,14 +342,16 @@ function Build-AllConfiguration {
     $overallDuration = $overallEndTime - $overallStartTime
 
     # Build summary
-    Write-Output "========================================"
-    Write-Output "   Build Summary"
-    Write-Output "========================================"
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   Build Summary" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
 
     foreach ($result in $results) {
-        $statusIcon = if ($result.Success) { "Success" } else { "Failed" }
-
-        Write-Output "$statusIcon $($result.Target)"
+        if ($result.Success) {
+            Write-FormattedOutput "$($result.Target) - PASSED" -Type Success
+        } else {
+            Write-FormattedOutput "$($result.Target) - FAILED" -Type Error
+        }
         Write-Output "   Duration: $($result.Duration.TotalSeconds.ToString('F1'))s"
     }
 
@@ -289,7 +361,7 @@ function Build-AllConfiguration {
 
     if ($successCount -eq $totalCount) {
         Write-Output ""
-        Write-Output "All builds completed successfully!"
+        Write-FormattedOutput "All builds completed successfully!" -Type Success
 
         # Show generated files
         $runDir = "Run\CMake"
@@ -299,26 +371,26 @@ function Build-AllConfiguration {
             $exeFiles = Get-ChildItem -Path $runDir -Filter "*.exe" | Sort-Object Name
             foreach ($exe in $exeFiles) {
                 $size = [math]::Round($exe.Length / 1KB, 1)
-                Write-Output "  $($exe.Name) ($size KB)"
+                Write-Output "  - $($exe.Name) ($size KB)"
             }
 
             Write-Output ""
             Write-Output "Directory structure:"
             Write-Output "Run\CMake\"
-            Write-Output "   FirstCMake_Debug_x64.exe"
-            Write-Output "   FirstCMake_Release_x64.exe"
-            Write-Output "   FirstCMake_Debug_x86.exe"
-            Write-Output "   FirstCMake_Release_x86.exe"
+            Write-Output "   |-- FirstCMake_Debug_x64.exe"
+            Write-Output "   |-- FirstCMake_Release_x64.exe"
+            Write-Output "   |-- FirstCMake_Debug_x86.exe"
+            Write-Output "   +-- FirstCMake_Release_x86.exe"
             Write-Output ""
             Write-Output "Temporary\CMake\"
-            Write-Output "   FirstCMake_Debug_x64\"
-            Write-Output "   FirstCMake_Release_x64\"
-            Write-Output "   FirstCMake_Debug_x86\"
-            Write-Output "   FirstCMake_Release_x86\"
+            Write-Output "   |-- FirstCMake_Debug_x64\"
+            Write-Output "   |-- FirstCMake_Release_x64\"
+            Write-Output "   |-- FirstCMake_Debug_x86\"
+            Write-Output "   +-- FirstCMake_Release_x86\"
         }
     } else {
         Write-Output ""
-        Write-Warning "Some builds failed. Check the errors above."
+        Write-FormattedOutput "Some builds failed. Check the errors above." -Type Warning
     }
 }
 
@@ -348,16 +420,109 @@ try {
 
         if ($success) {
             Write-Output ""
-            Write-Output "Build completed successfully!"
+            Write-FormattedOutput "Build completed successfully!" -Type Success
         } else {
             Write-Output ""
-            Write-Error "Build failed!"
+            Write-FormattedOutput "Build failed!" -Type Error
+            exit 1
         }
         return
     }
 
     # Interactive mode (default)
-    $choice = Show-InteractiveMenu
+    Write-Output ""
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   CMake Build Script for FirstCMake" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
+    Write-Output ""
+    Write-FormattedOutput "Welcome to the interactive build system!" -Type Header
+    Write-Output ""
+    Write-FormattedOutput "This script will help you build your CMake project with different configurations." -Type Info
+    Write-FormattedOutput "All executables will be created in: Run\CMake\" -Type Info
+    Write-FormattedOutput "Build files will be stored in: Temporary\CMake\" -Type Info
+    Write-Output ""
+
+    Write-FormattedOutput "========================================" -Type Header
+    Write-FormattedOutput "   Available Build Options" -Type Header
+    Write-FormattedOutput "========================================" -Type Header
+    Write-Output ""
+    Write-FormattedOutput "What would you like to build?" -Type Header
+    Write-Output ""
+    Write-Output "1. Build all configurations (Debug/Release x64/x86)"
+    Write-Output "   - This will build all 4 combinations and show a summary"
+    Write-Output ""
+    Write-Output "2. Build Debug x64"
+    Write-Output "   - Debug build with full debugging symbols (64-bit)"
+    Write-Output ""
+    Write-Output "3. Build Release x64"
+    Write-Output "   - Optimized release build (64-bit)"
+    Write-Output ""
+    Write-Output "4. Build Debug x86"
+    Write-Output "   - Debug build with full debugging symbols (32-bit)"
+    Write-Output ""
+    Write-Output "5. Build Release x86"
+    Write-Output "   - Optimized release build (32-bit)"
+    Write-Output ""
+    Write-Output "6. Clean all outputs"
+    Write-Output "   - Remove all generated files and build directories"
+    Write-Output ""
+    Write-Output "7. Exit"
+    Write-Output "   - Exit the build script"
+    Write-Output ""
+
+    do {
+        $choice = Read-Host "Please select an option (1-7)"
+
+        switch ($choice) {
+            "1" {
+                Write-Output ""
+                Write-FormattedOutput "Starting build for all configurations..." -Type Header
+                $choiceResult = @{ Mode = "All" }
+                break
+            }
+            "2" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Debug x64 build..." -Type Header
+                $choiceResult = @{ Mode = "Single"; Config = "Debug"; Platform = "x64" }
+                break
+            }
+            "3" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Release x64 build..." -Type Header
+                $choiceResult = @{ Mode = "Single"; Config = "Release"; Platform = "x64" }
+                break
+            }
+            "4" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Debug x86 build..." -Type Header
+                $choiceResult = @{ Mode = "Single"; Config = "Debug"; Platform = "x86" }
+                break
+            }
+            "5" {
+                Write-Output ""
+                Write-FormattedOutput "Starting Release x86 build..." -Type Header
+                $choiceResult = @{ Mode = "Single"; Config = "Release"; Platform = "x86" }
+                break
+            }
+            "6" {
+                Write-Output ""
+                Write-FormattedOutput "Starting cleanup..." -Type Header
+                $choiceResult = @{ Mode = "Clean" }
+                break
+            }
+            "7" {
+                $choiceResult = @{ Mode = "Exit" }
+                break
+            }
+            default {
+                Write-Output ""
+                Write-FormattedOutput "Invalid choice '$choice'. Please select a number from 1 to 7." -Type Warning
+                Write-Output ""
+            }
+        }
+    } while (-not $choiceResult)
+
+    $choice = $choiceResult
 
     switch ($choice.Mode) {
         "All" {
@@ -367,7 +532,7 @@ try {
             $success = Build-SingleConfiguration -Config $choice.Config -Platform $choice.Platform
             if ($success) {
                 Write-Output ""
-                Write-Output "Build completed successfully!"
+                Write-FormattedOutput "Build completed successfully!" -Type Success
             }
         }
         "Clean" {
@@ -380,8 +545,9 @@ try {
     }
 
 } catch {
-    Write-Error "An unexpected error occurred: $($_.Exception.Message)"
+    Write-FormattedOutput "An unexpected error occurred: $($_.Exception.Message)" -Type Error
     Write-Verbose "Stack trace: $($_.ScriptStackTrace)"
+    exit 1
 } finally {
     if (-not $Help -and -not ($choice.Mode -eq "Exit")) {
         Write-Output ""
