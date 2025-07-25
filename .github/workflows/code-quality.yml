@@ -62,7 +62,7 @@ jobs:
           echo "Checking required files..."
           test -f CMakeLists.txt || (echo "❌ CMakeLists.txt missing" && exit 1)
           test -f Build.ps1 || (echo "❌ Build.ps1 missing" && exit 1)
-          test -f README.md || (echo "❌ README.md missing" && exit 1)
+          test -f Docs/README.md || (echo "❌ README.md missing" && exit 1)
           
           echo "Checking directory structure..."
           test -d Code/Game/src || (echo "❌ Source directory missing" && exit 1)
