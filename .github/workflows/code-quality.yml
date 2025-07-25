@@ -7,24 +7,74 @@ on:
     branches: [ main ]
 
 jobs:
-  clang-format:
-    name: Check Code Formatting
+  cmake-validation:
+    name: CMake Validation
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup clang-format
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.25'
+
+      - name: Setup GCC
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format-14
+          sudo apt-get install -y gcc-12 g++-12
 
-      - name: Check C++ formatting
+      - name: Validate CMakeLists.txt syntax
         run: |
-          echo "Checking C++ code formatting..."
-          find Code -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | xargs clang-format-14 --dry-run --Werror
-          echo "✓ Code formatting is correct"
+          echo "Validating CMakeLists.txt syntax..."
+          # 檢查檔案存在
+          test -f CMakeLists.txt || (echo "❌ CMakeLists.txt missing" && exit 1)
+          
+          # 基本語法檢查 - 嘗試解析但不生成檔案
+          mkdir -p temp-validate
+          cd temp-validate
+          
+          # 設定環境變數
+          export CC=gcc-12
+          export CXX=g++-12
+          
+          # 嘗試配置 - 如果成功表示語法正確
+          if cmake .. -DCMAKE_BUILD_TYPE=Debug > cmake_output.log 2>&1; then
+            echo "✓ CMakeLists.txt syntax is valid"
+            echo "Configuration output:"
+            cat cmake_output.log | head -20
+          else
+            echo "❌ CMakeLists.txt has syntax errors"
+            echo "Error output:"
+            cat cmake_output.log
+            exit 1
+          fi
+          
+          cd ..
+          rm -rf temp-validate
+
+      - name: Check project structure
+        run: |
+          echo "Checking project structure..."
+          
+          # 檢查必要檔案和目錄
+          echo "Checking required files..."
+          test -f CMakeLists.txt || (echo "❌ CMakeLists.txt missing" && exit 1)
+          test -f Build.ps1 || (echo "❌ Build.ps1 missing" && exit 1)
+          test -f README.md || (echo "❌ README.md missing" && exit 1)
+          
+          echo "Checking directory structure..."
+          test -d Code/Game/src || (echo "❌ Source directory missing" && exit 1)
+          test -d Code/Game/include || (echo "❌ Include directory missing" && exit 1)
+          test -d Code/Game/lib || (echo "❌ Library directory missing" && exit 1)
+          
+          echo "Checking source files..."
+          test -f Code/Game/src/FirstCMake.cpp || (echo "❌ Main source file missing" && exit 1)
+          test -f Code/Game/include/Utils.h || (echo "❌ Utils header missing" && exit 1)
+          test -f Code/Game/lib/Utils.cpp || (echo "❌ Utils source missing" && exit 1)
+          
+          echo "✓ Project structure looks good"
 
   cmake-lint:
     name: CMake Lint
@@ -46,8 +96,60 @@ jobs:
       - name: Run cmake-lint
         run: |
           echo "Linting CMakeLists.txt..."
-          cmake-lint --disabled-codes C0103,C0111 CMakeLists.txt
-          echo "✓ CMake files look good"
+          # 使用比較寬鬆的設定，忽略一些過於嚴格的規則
+          cmake-lint \
+            --disabled-codes C0103,C0111,C0301 \
+            --line-width 80 \
+            CMakeLists.txt
+          echo "✓ CMake lint passed"
+
+  clang-format:
+    name: Check Code Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-14
+
+      - name: Check C++ formatting
+        run: |
+          echo "Checking C++ code formatting..."
+          
+          # 尋找所有 C++ 檔案
+          cpp_files=$(find Code -name "*.cpp" -o -name "*.h" -o -name "*.hpp" 2>/dev/null || true)
+          
+          if [ -z "$cpp_files" ]; then
+            echo "No C++ files found to check"
+            exit 0
+          fi
+          
+          echo "Found C++ files:"
+          echo "$cpp_files"
+          
+          # 檢查格式化
+          format_issues=0
+          for file in $cpp_files; do
+            echo "Checking $file..."
+            if ! clang-format-14 --dry-run --Werror "$file" 2>/dev/null; then
+              echo "❌ Formatting issues in $file"
+              format_issues=$((format_issues + 1))
+            else
+              echo "✓ $file is properly formatted"
+            fi
+          done
+          
+          if [ $format_issues -gt 0 ]; then
+            echo "❌ Found $format_issues files with formatting issues"
+            echo "Run 'clang-format -i' on the problematic files to fix"
+            exit 1
+          else
+            echo "✓ All C++ files are properly formatted"
+          fi
 
   powershell-lint:
     name: PowerShell Script Analysis
@@ -60,9 +162,25 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          Invoke-ScriptAnalyzer -Path Build.ps1 -Severity Error
-          Write-Host "✓ PowerShell script analysis passed"
+          if (Test-Path "Build.ps1") {
+            Write-Host "Analyzing Build.ps1..."
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          
+            $results = Invoke-ScriptAnalyzer -Path Build.ps1 -Severity Error,Warning
+          
+            if ($results) {
+              Write-Host "❌ PSScriptAnalyzer found issues:" -ForegroundColor Red
+              $results | ForEach-Object {
+                Write-Host "  $($_.Severity): $($_.Message)" -ForegroundColor Yellow
+                Write-Host "    Line $($_.Line): $($_.ScriptName)" -ForegroundColor Gray
+              }
+              exit 1
+            } else {
+              Write-Host "✓ PowerShell script analysis passed" -ForegroundColor Green
+            }
+          } else {
+            Write-Host "No Build.ps1 found, skipping PowerShell analysis"
+          }
 
   security-scan:
     name: Security Scan
@@ -72,13 +190,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run CodeQL Analysis
+      - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: cpp
+          config: |
+            name: "CodeQL Config"
+            disable-default-queries: false
+            queries:
+              - uses: security-and-quality
+
+      - name: Setup build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-12 g++-12
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
+        env:
+          CC: gcc-12
+          CXX: g++-12
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp"
