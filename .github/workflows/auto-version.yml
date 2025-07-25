@@ -98,8 +98,26 @@ jobs:
           
           echo "tag_exists=$tag_exists" >> $GITHUB_OUTPUT
 
+      - name: Check if release exists
+        id: check-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          new_version="${{ steps.new-version.outputs.new_version }}"
+          
+          # Check if release already exists
+          if gh release view "$new_version" >/dev/null 2>&1; then
+            echo "Release $new_version already exists"
+            release_exists="true"
+          else
+            echo "Release $new_version does not exist"
+            release_exists="false"
+          fi
+          
+          echo "release_exists=$release_exists" >> $GITHUB_OUTPUT
+
       - name: Create and push tag
-        if: steps.check-tag.outputs.tag_exists == 'false'
+        if: steps.check-tag.outputs.tag_exists == 'false' && steps.check-release.outputs.release_exists == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -116,17 +134,23 @@ jobs:
           echo "Successfully created and pushed tag: $new_version"
 
       - name: Skip tag creation
-        if: steps.check-tag.outputs.tag_exists == 'true'
+        if: steps.check-tag.outputs.tag_exists == 'true' || steps.check-release.outputs.release_exists == 'true'
         run: |
           new_version="${{ steps.new-version.outputs.new_version }}"
-          echo "⚠️ Tag $new_version already exists, skipping tag creation"
+          if [[ "${{ steps.check-tag.outputs.tag_exists }}" == "true" ]]; then
+            echo "⚠️ Tag $new_version already exists, skipping tag creation"
+          fi
+          if [[ "${{ steps.check-release.outputs.release_exists }}" == "true" ]]; then
+            echo "⚠️ Release $new_version already exists, skipping tag creation"
+          fi
           echo "This might happen if:"
           echo "  1. The workflow was re-run"
-          echo "  2. The tag was created manually"
+          echo "  2. The tag/release was created manually"
           echo "  3. Multiple commits triggered the same version"
+          echo "  4. Concurrent workflow runs occurred"
 
       - name: Create release
-        if: steps.check-tag.outputs.tag_exists == 'false'
+        if: steps.check-tag.outputs.tag_exists == 'false' && steps.check-release.outputs.release_exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.new-version.outputs.new_version }}
@@ -148,7 +172,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Skip release creation
-        if: steps.check-tag.outputs.tag_exists == 'true'
+        if: steps.check-tag.outputs.tag_exists == 'true' || steps.check-release.outputs.release_exists == 'true'
         run: |
           new_version="${{ steps.new-version.outputs.new_version }}"
-          echo "⚠️ Skipping release creation for existing tag: $new_version"
+          echo "⚠️ Skipping release creation for existing tag/release: $new_version"
