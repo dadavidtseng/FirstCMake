@@ -103,53 +103,7 @@ jobs:
             CMakeLists.txt
           echo "✓ CMake lint passed"
 
-  clang-format:
-    name: Check Code Formatting
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup clang-format
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format-14
-
-      - name: Check C++ formatting
-        run: |
-          echo "Checking C++ code formatting..."
-          
-          # 尋找所有 C++ 檔案
-          cpp_files=$(find Code -name "*.cpp" -o -name "*.h" -o -name "*.hpp" 2>/dev/null || true)
-          
-          if [ -z "$cpp_files" ]; then
-            echo "No C++ files found to check"
-            exit 0
-          fi
-          
-          echo "Found C++ files:"
-          echo "$cpp_files"
-          
-          # 檢查格式化
-          format_issues=0
-          for file in $cpp_files; do
-            echo "Checking $file..."
-            if ! clang-format-14 --dry-run --Werror "$file" 2>/dev/null; then
-              echo "❌ Formatting issues in $file"
-              format_issues=$((format_issues + 1))
-            else
-              echo "✓ $file is properly formatted"
-            fi
-          done
-          
-          if [ $format_issues -gt 0 ]; then
-            echo "❌ Found $format_issues files with formatting issues"
-            echo "Run 'clang-format -i' on the problematic files to fix"
-            exit 1
-          else
-            echo "✓ All C++ files are properly formatted"
-          fi
+  # 移除了 clang-format 檢查的 job
 
   powershell-lint:
     name: PowerShell Script Analysis

@@ -1,4 +1,4 @@
-# Build.ps1 - CMake Build Script for FirstCMake
+﻿# Build.ps1 - CMake Build Script for FirstCMake
 #
 # Usage:
 #   .\Build.ps1                              # Interactive mode
@@ -6,7 +6,7 @@
 #   .\Build.ps1 -Configuration Debug -Platform x64  # Build specific configuration
 #   .\Build.ps1 -Help                        # Show help
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration,
@@ -53,6 +53,9 @@ function Show-Help {
 
 # Clean build outputs
 function Remove-BuildOutput {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
     Write-Output "========================================"
     Write-Output "   Cleaning Build Outputs"
     Write-Output "========================================"
@@ -61,16 +64,18 @@ function Remove-BuildOutput {
 
     foreach ($dir in $dirsToClean) {
         if (Test-Path $dir) {
-            Write-Verbose "Cleaning: $dir"
-            Remove-Item -Recurse -Force $dir
-            Write-Output "✓ Cleaned: $dir"
+            if ($PSCmdlet.ShouldProcess($dir, "Remove directory")) {
+                Write-Verbose "Cleaning: $dir"
+                Remove-Item -Recurse -Force $dir
+                Write-Output "Cleaned: $dir"
+            }
         } else {
-            Write-Output "✓ Already clean: $dir"
+            Write-Output "Already clean: $dir"
         }
     }
 
     Write-Output ""
-    Write-Output "🧹 Clean completed!"
+    Write-Output "Clean completed!"
 }
 
 # Interactive menu
@@ -110,7 +115,7 @@ function Show-InteractiveMenu {
 
 # Build single configuration
 function Build-SingleConfiguration {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [ValidateSet('Debug', 'Release')]
@@ -134,7 +139,7 @@ function Build-SingleConfiguration {
         if ($LASTEXITCODE -ne 0) {
             throw "CMake not found"
         }
-        Write-Output "✓ CMake is available"
+        Write-Output "CMake is available"
     } catch {
         Write-Error "CMake not found! Please install CMake first."
         Write-Output "Download from: https://cmake.org/download/"
@@ -150,10 +155,14 @@ function Build-SingleConfiguration {
 
     # Create build directory
     if (Test-Path $buildDir) {
-        Write-Verbose "Cleaning old build: $buildDir"
-        Remove-Item -Recurse -Force $buildDir
+        if ($PSCmdlet.ShouldProcess($buildDir, "Remove old build directory")) {
+            Write-Verbose "Cleaning old build: $buildDir"
+            Remove-Item -Recurse -Force $buildDir
+        }
     }
-    New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+    if ($PSCmdlet.ShouldProcess($buildDir, "Create build directory")) {
+        New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+    }
 
     # Enter build directory
     $originalLocation = Get-Location
@@ -174,35 +183,39 @@ function Build-SingleConfiguration {
         Write-Verbose "Command: cmake $($cmakeArgs -join ' ')"
 
         # Run CMake configure
-        $configOutput = & cmake @cmakeArgs 2>&1
+        if ($PSCmdlet.ShouldProcess("CMake", "Configure build")) {
+            $configOutput = & cmake @cmakeArgs 2>&1
 
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Configuration failed!"
-            Write-Error "CMake output: $configOutput"
-            return $false
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Configuration failed!"
+                Write-Error "CMake output: $configOutput"
+                return $false
+            }
+
+            Write-Output "Configuration successful"
         }
-
-        Write-Output "✓ Configuration successful"
 
         # Run build
         Write-Output "Building..."
         Write-Verbose "Command: cmake --build . --config $Config"
 
-        $buildOutput = & cmake --build . --config $Config 2>&1
+        if ($PSCmdlet.ShouldProcess("CMake", "Build project")) {
+            $buildOutput = & cmake --build . --config $Config 2>&1
 
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Build failed!"
-            Write-Error "Build output: $buildOutput"
-            return $false
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Build failed!"
+                Write-Error "Build output: $buildOutput"
+                return $false
+            }
+
+            Write-Output "Build successful: $targetName"
         }
-
-        Write-Output "✓ Build successful: $targetName"
 
         # Check if executable was created and copied
         $exePath = "$originalLocation\Run\CMake\$targetName.exe"
         if (Test-Path $exePath) {
             $exeSize = [math]::Round((Get-Item $exePath).Length / 1KB, 1)
-            Write-Output "✓ Executable created: Run\CMake\$targetName.exe ($exeSize KB)"
+            Write-Output "Executable created: Run\CMake\$targetName.exe ($exeSize KB)"
         } else {
             Write-Warning "Executable not found at: Run\CMake\$targetName.exe"
         }
@@ -219,6 +232,9 @@ function Build-SingleConfiguration {
 
 # Build all configuration
 function Build-AllConfiguration {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
     Write-Output "========================================"
     Write-Output "   Building All Configurations"
     Write-Output "========================================"
@@ -261,7 +277,7 @@ function Build-AllConfiguration {
     Write-Output "========================================"
 
     foreach ($result in $results) {
-        $statusIcon = if ($result.Success) { "✓" } else { "❌" }
+        $statusIcon = if ($result.Success) { "Success" } else { "Failed" }
 
         Write-Output "$statusIcon $($result.Target)"
         Write-Output "   Duration: $($result.Duration.TotalSeconds.ToString('F1'))s"
@@ -273,7 +289,7 @@ function Build-AllConfiguration {
 
     if ($successCount -eq $totalCount) {
         Write-Output ""
-        Write-Output "🎉 All builds completed successfully!"
+        Write-Output "All builds completed successfully!"
 
         # Show generated files
         $runDir = "Run\CMake"
@@ -283,22 +299,22 @@ function Build-AllConfiguration {
             $exeFiles = Get-ChildItem -Path $runDir -Filter "*.exe" | Sort-Object Name
             foreach ($exe in $exeFiles) {
                 $size = [math]::Round($exe.Length / 1KB, 1)
-                Write-Output "  📁 $($exe.Name) ($size KB)"
+                Write-Output "  $($exe.Name) ($size KB)"
             }
 
             Write-Output ""
             Write-Output "Directory structure:"
-            Write-Output "📁 Run\CMake\"
-            Write-Output "   ├── FirstCMake_Debug_x64.exe"
-            Write-Output "   ├── FirstCMake_Release_x64.exe"
-            Write-Output "   ├── FirstCMake_Debug_x86.exe"
-            Write-Output "   └── FirstCMake_Release_x86.exe"
+            Write-Output "Run\CMake\"
+            Write-Output "   FirstCMake_Debug_x64.exe"
+            Write-Output "   FirstCMake_Release_x64.exe"
+            Write-Output "   FirstCMake_Debug_x86.exe"
+            Write-Output "   FirstCMake_Release_x86.exe"
             Write-Output ""
-            Write-Output "📁 Temporary\CMake\"
-            Write-Output "   ├── FirstCMake_Debug_x64\"
-            Write-Output "   ├── FirstCMake_Release_x64\"
-            Write-Output "   ├── FirstCMake_Debug_x86\"
-            Write-Output "   └── FirstCMake_Release_x86\"
+            Write-Output "Temporary\CMake\"
+            Write-Output "   FirstCMake_Debug_x64\"
+            Write-Output "   FirstCMake_Release_x64\"
+            Write-Output "   FirstCMake_Debug_x86\"
+            Write-Output "   FirstCMake_Release_x86\"
         }
     } else {
         Write-Output ""
@@ -332,7 +348,7 @@ try {
 
         if ($success) {
             Write-Output ""
-            Write-Output "🎉 Build completed successfully!"
+            Write-Output "Build completed successfully!"
         } else {
             Write-Output ""
             Write-Error "Build failed!"
@@ -351,7 +367,7 @@ try {
             $success = Build-SingleConfiguration -Config $choice.Config -Platform $choice.Platform
             if ($success) {
                 Write-Output ""
-                Write-Output "🎉 Build completed successfully!"
+                Write-Output "Build completed successfully!"
             }
         }
         "Clean" {
