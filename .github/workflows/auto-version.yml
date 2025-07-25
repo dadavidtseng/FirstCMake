@@ -1,0 +1,104 @@
+name: Auto Version
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  auto-tag:
+    name: Auto Tag Version
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip version]')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get-latest-tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "Latest tag: $latest_tag"
+
+      - name: Determine version bump
+        id: version-bump
+        run: |
+          commit_message="${{ github.event.head_commit.message }}"
+          
+          if [[ $commit_message == *"[major]"* ]]; then
+            bump_type="major"
+          elif [[ $commit_message == *"[minor]"* ]] || [[ $commit_message == *"feat:"* ]]; then
+            bump_type="minor"
+          else
+            bump_type="patch"
+          fi
+          
+          echo "bump_type=$bump_type" >> $GITHUB_OUTPUT
+          echo "Version bump type: $bump_type"
+
+      - name: Calculate new version
+        id: new-version
+        run: |
+          latest_tag="${{ steps.get-latest-tag.outputs.latest_tag }}"
+          bump_type="${{ steps.version-bump.outputs.bump_type }}"
+          
+          # Remove 'v' prefix if present
+          version=${latest_tag#v}
+          
+          # Split version into parts
+          IFS='.' read -ra version_parts <<< "$version"
+          major=${version_parts[0]:-0}
+          minor=${version_parts[1]:-0}
+          patch=${version_parts[2]:-0}
+          
+          # Bump version
+          case $bump_type in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+          
+          new_version="v$major.$minor.$patch"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "New version: $new_version"
+
+      - name: Create and push tag
+        run: |
+          new_version="${{ steps.new-version.outputs.new_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$new_version" -m "Release $new_version"
+          git push origin "$new_version"
+
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.new-version.outputs.new_version }}
+          release_name: Release ${{ steps.new-version.outputs.new_version }}
+          body: |
+            ## Changes in ${{ steps.new-version.outputs.new_version }}
+            
+            **Commit:** ${{ github.event.head_commit.message }}
+            **SHA:** ${{ github.sha }}
+            
+            ### Download
+            The build artifacts will be available shortly after the release builds complete.
+            
+            ### Installation
+            Download the appropriate executable for your platform and run it directly.
+          draft: false
+          prerelease: false

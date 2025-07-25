@@ -1,0 +1,260 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  #============================================
+  # Build Matrix - Multiple Platforms
+  #============================================
+  build:
+    name: Build (${{ matrix.config.name }})
+    runs-on: ${{ matrix.config.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+            name: "Windows MSVC x64",
+            os: windows-latest,
+            build_type: "Release",
+            cc: "cl",
+            cxx: "cl",
+            platform: "x64",
+            generators: "Visual Studio 17 2022"
+          }
+          - {
+            name: "Windows MSVC x86",
+            os: windows-latest,
+            build_type: "Release",
+            cc: "cl",
+            cxx: "cl",
+            platform: "Win32",
+            generators: "Visual Studio 17 2022"
+          }
+          - {
+            name: "Linux GCC",
+            os: ubuntu-latest,
+            build_type: "Release",
+            cc: "gcc-11",
+            cxx: "g++-11",
+            platform: "x64"
+          }
+          - {
+            name: "macOS Clang",
+            os: macos-latest,
+            build_type: "Release",
+            cc: "clang",
+            cxx: "clang++",
+            platform: "x64"
+          }
+
+    steps:
+      #----------------------------------------
+      # Checkout
+      #----------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      #----------------------------------------
+      # Setup Environment
+      #----------------------------------------
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.25'
+
+      - name: Setup MSVC (Windows only)
+        if: matrix.config.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup GCC (Linux only)
+        if: matrix.config.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-11 g++-11
+
+      #----------------------------------------
+      # Print Environment Info
+      #----------------------------------------
+      - name: Print environment
+        run: |
+          echo "OS: ${{ matrix.config.os }}"
+          echo "Build Type: ${{ matrix.config.build_type }}"
+          echo "Platform: ${{ matrix.config.platform }}"
+          cmake --version
+          echo "Git SHA: ${{ github.sha }}"
+          echo "Git Ref: ${{ github.ref }}"
+
+      #----------------------------------------
+      # Configure CMake
+      #----------------------------------------
+      - name: Configure CMake (Windows)
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          cmake -B build -S . -A ${{ matrix.config.platform }} -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }}
+
+      - name: Configure CMake (Unix)
+        if: matrix.config.os != 'windows-latest'
+        run: |
+          export CC=${{ matrix.config.cc }}
+          export CXX=${{ matrix.config.cxx }}
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }}
+
+      #----------------------------------------
+      # Build
+      #----------------------------------------
+      - name: Build
+        run: cmake --build build --config ${{ matrix.config.build_type }}
+
+      #----------------------------------------
+      # Test (if you add tests later)
+      #----------------------------------------
+      - name: Test
+        working-directory: build
+        run: ctest -C ${{ matrix.config.build_type }} --output-on-failure
+
+      #----------------------------------------
+      # Package Artifacts
+      #----------------------------------------
+      - name: Package artifacts (Windows)
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          New-Item -ItemType Directory -Force -Path "artifacts"
+          $platformName = "${{ matrix.config.platform }}"
+          if ($platformName -eq "Win32") { $platformName = "x86" }
+          $artifactName = "FirstCMake_${{ matrix.config.build_type }}_$platformName"
+          
+          # Find and copy executable
+          $exePath = Get-ChildItem -Path "Run" -Filter "*.exe" -Recurse | Select-Object -First 1
+          if ($exePath) {
+            Copy-Item $exePath.FullName "artifacts/$artifactName.exe"
+            Write-Host "Packaged: $($exePath.FullName) -> artifacts/$artifactName.exe"
+          } else {
+            Write-Host "Warning: No executable found in Run directory"
+            # Fallback: look in build directory
+            $exePath = Get-ChildItem -Path "build" -Filter "*.exe" -Recurse | Select-Object -First 1
+            if ($exePath) {
+              Copy-Item $exePath.FullName "artifacts/$artifactName.exe"
+              Write-Host "Packaged from build: $($exePath.FullName) -> artifacts/$artifactName.exe"
+            }
+          }
+
+      - name: Package artifacts (Unix)
+        if: matrix.config.os != 'windows-latest'
+        run: |
+          mkdir -p artifacts
+          # Find executable in Run directory or build directory
+          if [ -d "Run" ]; then
+            find Run -name "FirstCMake*" -type f -executable | head -1 | xargs -I {} cp {} artifacts/FirstCMake_${{ matrix.config.build_type }}_${{ matrix.config.platform }}
+          else
+            find build -name "FirstCMake*" -type f -executable | head -1 | xargs -I {} cp {} artifacts/FirstCMake_${{ matrix.config.build_type }}_${{ matrix.config.platform }}
+          fi
+
+      #----------------------------------------
+      # Upload Artifacts
+      #----------------------------------------
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirstCMake-${{ matrix.config.name }}-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30
+
+  #============================================
+  # Release Job (only on tags)
+  #============================================
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -la release-artifacts/
+
+      - name: Create release archive
+        run: |
+          cd release-artifacts
+          for dir in */; do
+            echo "Processing $dir"
+            cd "$dir"
+            zip -r "../FirstCMake-${dir%/}.zip" .
+            cd ..
+          done
+          ls -la *.zip
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/*.zip
+          body: |
+            ## FirstCMake Release ${{ github.ref_name }}
+            
+            ### Downloads
+            - **Windows x64**: FirstCMake-Windows-MSVC-x64-*.zip
+            - **Windows x86**: FirstCMake-Windows-MSVC-x86-*.zip  
+            - **Linux**: FirstCMake-Linux-GCC-*.zip
+            - **macOS**: FirstCMake-macOS-Clang-*.zip
+            
+            ### Changes
+            See [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for detailed changes.
+            
+            Built from commit: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  #============================================
+  # Code Quality Checks
+  #============================================
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+
+      - name: Run cmake-format check (if available)
+        continue-on-error: true
+        run: |
+          if command -v cmake-format &> /dev/null; then
+            echo "Checking CMake format..."
+            cmake-format --check CMakeLists.txt
+          else
+            echo "cmake-format not available, skipping"
+          fi
+
+      - name: Check file structure
+        run: |
+          echo "Checking project structure..."
+          test -f CMakeLists.txt || (echo "CMakeLists.txt missing" && exit 1)
+          test -f Build.ps1 || (echo "Build.ps1 missing" && exit 1)
+          test -d Code/Game/src || (echo "Source directory missing" && exit 1)
+          test -d Code/Game/include || (echo "Include directory missing" && exit 1)
+          echo "✓ Project structure looks good"
+
+      - name: Validate CMakeLists.txt
+        run: |
+          echo "Validating CMakeLists.txt..."
+          cmake -B temp-build -S . -DCMAKE_BUILD_TYPE=Debug --dry-run
+          echo "✓ CMakeLists.txt is valid"
