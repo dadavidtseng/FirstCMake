@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <cctype>
-#include <ranges>    // C++20 ranges
+// #include <ranges>    // C++20 ranges - 移除這行，因為跨平台相容性問題
 
 //----------------------------------------------------------------------------------------------------
 namespace Utils
@@ -28,9 +28,9 @@ namespace Utils
     std::string ToUpper(const std::string& str)
     {
         std::string result = str;
-        // C++20 ranges 寫法
-        std::ranges::transform(result, result.begin(),
-                               [](char c) { return std::toupper(c); });
+        // 改用傳統的 std::transform（更好的跨平台相容性）
+        std::transform(result.begin(), result.end(), result.begin(),
+                      [](unsigned char c) { return std::toupper(c); });
         return result;
     }
 
@@ -47,7 +47,7 @@ namespace Utils
         return {
             "C++20 standard support",
             "Concepts and constraints",
-            "Ranges library usage",
+            "Cross-platform compatibility",  // 改了這行，移除 "Ranges library usage"
             "PascalCase naming convention",
             "Advanced CMake configuration",
             "Template specialization",
@@ -55,23 +55,18 @@ namespace Utils
         };
     }
 
-    // 使用 C++20 ranges 的函式
-    template <std::ranges::range R>
-    void PrintRange(const R& range, const std::string& title)
+    // 改用傳統方式的函式（移除 ranges template）
+    void PrintRange(const std::vector<std::string>& range, const std::string& title)
     {
         printf("\n%s:\n", title.c_str());
         int index = 1;
         for (const auto& item : range)
         {
-            printf("%d. %s\n", index++, std::string(item).c_str());
+            printf("%d. %s\n", index++, item.c_str());
         }
     }
 
-    // 明確實例化
-    template void PrintRange<std::vector<std::string>>(
-        const std::vector<std::string>& range, const std::string& title);
-
-    // 簡化版的格式化函式（因為 std::format 支援可能有限）
+    // 簡化版的格式化函式
     template <typename... Args>
     std::string FormatString(const std::string& format, Args&&... args)
     {
@@ -79,4 +74,7 @@ namespace Utils
         // 在實際專案中可以用 fmt 函式庫
         return format; // 簡化實作
     }
+
+    // 明確實例化
+    template std::string FormatString<>(const std::string& format);
 }
