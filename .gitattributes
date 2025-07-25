@@ -1,0 +1,243 @@
+# FirstCMake Project .gitattributes
+# Defines attributes for pathnames and ensures consistent behavior across platforms
+
+#============================================
+# Auto-detection
+#============================================
+* text=auto
+
+#============================================
+# Source Code Files
+#============================================
+
+# C/C++ source files
+*.c text eol=lf
+*.cc text eol=lf
+*.cxx text eol=lf
+*.cpp text eol=lf
+*.c++ text eol=lf
+
+# C/C++ header files
+*.h text eol=lf
+*.hh text eol=lf
+*.hpp text eol=lf
+*.hxx text eol=lf
+*.h++ text eol=lf
+
+# Inline files
+*.inl text eol=lf
+*.inc text eol=lf
+
+#============================================
+# Build System Files
+#============================================
+
+# CMake files
+CMakeLists.txt text eol=lf
+*.cmake text eol=lf
+*.cmake.in text eol=lf
+
+# Make files
+Makefile text eol=lf
+makefile text eol=lf
+*.mk text eol=lf
+*.mak text eol=lf
+
+# Visual Studio project files
+*.sln text eol=crlf
+*.vcxproj text eol=crlf
+*.vcxproj.filters text eol=crlf
+*.vcxproj.user text eol=crlf
+
+#============================================
+# Script Files
+#============================================
+
+# PowerShell scripts
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# Batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts
+*.sh text eol=lf
+
+#============================================
+# Documentation Files
+#============================================
+
+# Markdown
+*.md text eol=lf
+*.markdown text eol=lf
+*.mdown text eol=lf
+*.mkd text eol=lf
+
+# Text files
+*.txt text eol=lf
+README text eol=lf
+LICENSE text eol=lf
+CHANGELOG text eol=lf
+
+# Documentation formats
+*.rst text eol=lf
+*.rtf text eol=lf
+
+#============================================
+# Configuration Files
+#============================================
+
+# JSON
+*.json text eol=lf
+
+# XML
+*.xml text eol=lf
+*.xaml text eol=lf
+
+# YAML
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# INI files
+*.ini text eol=crlf
+*.cfg text eol=lf
+*.conf text eol=lf
+*.config text eol=lf
+
+# Properties
+*.properties text eol=lf
+
+#============================================
+# Web Files (if applicable)
+#============================================
+
+# HTML
+*.html text eol=lf
+*.htm text eol=lf
+
+# CSS
+*.css text eol=lf
+*.scss text eol=lf
+*.sass text eol=lf
+*.less text eol=lf
+
+# JavaScript
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+#============================================
+# Binary Files (Explicitly marked as binary)
+#============================================
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.tiff binary
+*.tga binary
+*.svg binary
+
+# Audio
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.flac binary
+
+# Video
+*.mp4 binary
+*.avi binary
+*.mov binary
+*.mkv binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.rar binary
+
+# Executables and libraries
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.a binary
+*.lib binary
+*.obj binary
+*.o binary
+
+# Database files
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Office documents
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
+
+# Fonts
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+
+#============================================
+# Special Cases
+#============================================
+
+# Git files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.gitmodules text eol=lf
+
+# Docker files
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-compose.yml text eol=lf
+
+# CI/CD files
+*.yml text eol=lf
+*.yaml text eol=lf
+.github/**/*.yml text eol=lf
+.github/**/*.yaml text eol=lf
+
+#============================================
+# Generated Files (if any)
+#============================================
+
+# Version files (auto-generated)
+version.h export-ignore
+*_version.* export-ignore
+
+# Build artifacts (shouldn't be in repo anyway)
+*.generated.* binary
+
+#============================================
+# Language Statistics (Optional)
+#============================================
+
+# Tell GitHub this is primarily a C++ project
+*.cmake linguist-language=CMake
+*.ps1 linguist-language=PowerShell
+
+# Exclude generated files from language stats
+Temporary/** linguist-generated=true
+Run/** linguist-generated=true
+
+# Exclude third-party code (if any)
+third-party/** linguist-vendored=true
+external/** linguist-vendored=true
+vendor/** linguist-vendored=true
