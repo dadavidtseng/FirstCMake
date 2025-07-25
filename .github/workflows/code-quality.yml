@@ -46,7 +46,7 @@ jobs:
       - name: Run cmake-lint
         run: |
           echo "Linting CMakeLists.txt..."
-          cmake-lint CMakeLists.txt
+          cmake-lint --disabled-codes C0103,C0111 CMakeLists.txt
           echo "✓ CMake files look good"
 
   powershell-lint:

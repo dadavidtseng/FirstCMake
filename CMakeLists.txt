@@ -11,9 +11,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # 設定平台簡稱
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(PLATFORM_NAME "x64")
+  set(PLATFORM_NAME "x64")
 else()
-    set(PLATFORM_NAME "x86")
+  set(PLATFORM_NAME "x86")
 endif()
 
 # 設定組態名稱（保持原始大小寫）
@@ -23,14 +23,20 @@ set(CONFIG_NAME ${CMAKE_BUILD_TYPE})
 set(TARGET_NAME "${PROJECT_NAME}_${CONFIG_NAME}_${PLATFORM_NAME}")
 
 # 設定輸出目錄
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
+    ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
+    ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
+    ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
 
 # 設定中間檔案和函式庫輸出目錄
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
-set(CMAKE_PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
+    ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
+    ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
+set(CMAKE_PDB_OUTPUT_DIRECTORY
+    ${CMAKE_SOURCE_DIR}/Temporary/CMake/${TARGET_NAME})
 
 # 顯示重要訊息
 message(STATUS "=== CMake with Unified Naming Convention ===")
@@ -71,11 +77,11 @@ target_link_libraries(FirstCMake PRIVATE utils)
 
 # 設定編譯選項
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(FirstCMake PRIVATE /W4)
-    target_compile_options(utils PRIVATE /W4)
+  target_compile_options(FirstCMake PRIVATE /W4)
+  target_compile_options(utils PRIVATE /W4)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(FirstCMake PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(utils PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(FirstCMake PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(utils PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # 建立目錄結構
@@ -84,10 +90,11 @@ file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/Temporary/CMake)
 
 # 自訂目標：複製執行檔到 Run 目錄
 add_custom_command(TARGET FirstCMake POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/Run/CMake
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${CMAKE_SOURCE_DIR}/Run/CMake
     COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:FirstCMake>
-        ${CMAKE_SOURCE_DIR}/Run/CMake/${TARGET_NAME}.exe
+            $<TARGET_FILE:FirstCMake>
+            ${CMAKE_SOURCE_DIR}/Run/CMake/${TARGET_NAME}.exe
     COMMENT "Copying ${TARGET_NAME}.exe to Run/CMake/"
 )
 
