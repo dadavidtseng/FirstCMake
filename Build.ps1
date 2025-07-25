@@ -6,9 +6,14 @@
 #   .\Build.ps1 -Configuration Debug -Platform x64  # Build specific configuration
 #   .\Build.ps1 -Help                        # Show help
 
+[CmdletBinding()]
 param(
+    [ValidateSet('Debug', 'Release')]
     [string]$Configuration,
+
+    [ValidateSet('x64', 'x86')]
     [string]$Platform,
+
     [switch]$All,
     [switch]$Help,
     [switch]$Clean
@@ -19,70 +24,71 @@ param(
 
 # Show help information
 function Show-Help {
-    Write-Host "CMake Build Script for FirstCMake" -ForegroundColor Cyan
-    Write-Host "=================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Usage:" -ForegroundColor Yellow
-    Write-Host "  .\Build.ps1                              # Interactive mode" -ForegroundColor White
-    Write-Host "  .\Build.ps1 -All                         # Build all configurations" -ForegroundColor White
-    Write-Host "  .\Build.ps1 -Configuration Debug -Platform x64  # Build specific configuration" -ForegroundColor White
-    Write-Host "  .\Build.ps1 -Clean                       # Clean all build outputs" -ForegroundColor White
-    Write-Host "  .\Build.ps1 -Help                        # Show this help" -ForegroundColor White
-    Write-Host ""
-    Write-Host "Parameters:" -ForegroundColor Yellow
-    Write-Host "  -Configuration  Debug|Release            # Build configuration" -ForegroundColor White
-    Write-Host "  -Platform       x64|x86                  # Target platform" -ForegroundColor White
-    Write-Host "  -All                                      # Build all 4 configurations" -ForegroundColor White
-    Write-Host "  -Clean                                    # Clean build outputs" -ForegroundColor White
-    Write-Host "  -Help                                     # Show this help" -ForegroundColor White
-    Write-Host ""
-    Write-Host "Examples:" -ForegroundColor Yellow
-    Write-Host "  .\Build.ps1 -Configuration Debug -Platform x64" -ForegroundColor Gray
-    Write-Host "  .\Build.ps1 -All" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "Output:" -ForegroundColor Yellow
-    Write-Host "  Executables: Run\CMake\" -ForegroundColor White
-    Write-Host "  Build files: Temporary\CMake\" -ForegroundColor White
+    Write-Output ""
+    Write-Output "CMake Build Script for FirstCMake"
+    Write-Output "================================="
+    Write-Output ""
+    Write-Output "Usage:"
+    Write-Output "  .\Build.ps1                              # Interactive mode"
+    Write-Output "  .\Build.ps1 -All                         # Build all configurations"
+    Write-Output "  .\Build.ps1 -Configuration Debug -Platform x64  # Build specific configuration"
+    Write-Output "  .\Build.ps1 -Clean                       # Clean all build outputs"
+    Write-Output "  .\Build.ps1 -Help                        # Show this help"
+    Write-Output ""
+    Write-Output "Parameters:"
+    Write-Output "  -Configuration  Debug|Release            # Build configuration"
+    Write-Output "  -Platform       x64|x86                  # Target platform"
+    Write-Output "  -All                                      # Build all 4 configurations"
+    Write-Output "  -Clean                                    # Clean build outputs"
+    Write-Output "  -Help                                     # Show this help"
+    Write-Output ""
+    Write-Output "Examples:"
+    Write-Output "  .\Build.ps1 -Configuration Debug -Platform x64"
+    Write-Output "  .\Build.ps1 -All"
+    Write-Output ""
+    Write-Output "Output:"
+    Write-Output "  Executables: Run\CMake\"
+    Write-Output "  Build files: Temporary\CMake\"
 }
 
 # Clean build outputs
-function Clean-BuildOutput {
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "   Cleaning Build Outputs" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
+function Remove-BuildOutput {
+    Write-Output "========================================"
+    Write-Output "   Cleaning Build Outputs"
+    Write-Output "========================================"
 
     $dirsToClean = @("Run\CMake", "Temporary\CMake")
 
     foreach ($dir in $dirsToClean) {
         if (Test-Path $dir) {
-            Write-Host "Cleaning: $dir" -ForegroundColor Yellow
+            Write-Verbose "Cleaning: $dir"
             Remove-Item -Recurse -Force $dir
-            Write-Host "✓ Cleaned: $dir" -ForegroundColor Green
+            Write-Output "✓ Cleaned: $dir"
         } else {
-            Write-Host "✓ Already clean: $dir" -ForegroundColor Gray
+            Write-Output "✓ Already clean: $dir"
         }
     }
 
-    Write-Host ""
-    Write-Host "🧹 Clean completed!" -ForegroundColor Green
+    Write-Output ""
+    Write-Output "🧹 Clean completed!"
 }
 
 # Interactive menu
 function Show-InteractiveMenu {
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "   CMake Build Options" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "What would you like to build?" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "1. Build all configurations (Debug/Release x64/x86)" -ForegroundColor White
-    Write-Host "2. Build Debug x64" -ForegroundColor White
-    Write-Host "3. Build Release x64" -ForegroundColor White
-    Write-Host "4. Build Debug x86" -ForegroundColor White
-    Write-Host "5. Build Release x86" -ForegroundColor White
-    Write-Host "6. Clean all outputs" -ForegroundColor White
-    Write-Host "7. Exit" -ForegroundColor White
-    Write-Host ""
+    Write-Output "========================================"
+    Write-Output "   CMake Build Options"
+    Write-Output "========================================"
+    Write-Output ""
+    Write-Output "What would you like to build?"
+    Write-Output ""
+    Write-Output "1. Build all configurations (Debug/Release x64/x86)"
+    Write-Output "2. Build Debug x64"
+    Write-Output "3. Build Release x64"
+    Write-Output "4. Build Debug x86"
+    Write-Output "5. Build Release x86"
+    Write-Output "6. Clean all outputs"
+    Write-Output "7. Exit"
+    Write-Output ""
 
     do {
         $choice = Read-Host "Please select an option (1-7)"
@@ -96,7 +102,7 @@ function Show-InteractiveMenu {
             "6" { return @{ Mode = "Clean" } }
             "7" { return @{ Mode = "Exit" } }
             default {
-                Write-Host "Invalid choice. Please select 1-7." -ForegroundColor Red
+                Write-Warning "Invalid choice. Please select 1-7."
             }
         }
     } while ($true)
@@ -104,39 +110,47 @@ function Show-InteractiveMenu {
 
 # Build single configuration
 function Build-SingleConfiguration {
+    [CmdletBinding()]
     param(
+        [Parameter(Mandatory)]
+        [ValidateSet('Debug', 'Release')]
         [string]$Config,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('x64', 'x86')]
         [string]$Platform
     )
 
     $targetName = "FirstCMake_$Config" + "_$Platform"
     $buildDir = "Temporary\CMake\$targetName"
 
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "   Building: $targetName" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Output "========================================"
+    Write-Output "   Building: $targetName"
+    Write-Output "========================================"
 
     # Check if CMake is available
     try {
         $null = cmake --version 2>$null
-        if ($LASTEXITCODE -ne 0) { throw "CMake not found" }
-        Write-Host "✓ CMake is available" -ForegroundColor Green
+        if ($LASTEXITCODE -ne 0) {
+            throw "CMake not found"
+        }
+        Write-Output "✓ CMake is available"
     } catch {
-        Write-Host "❌ ERROR: CMake not found! Please install CMake first." -ForegroundColor Red
-        Write-Host "Download from: https://cmake.org/download/" -ForegroundColor Yellow
+        Write-Error "CMake not found! Please install CMake first."
+        Write-Output "Download from: https://cmake.org/download/"
         return $false
     }
 
     # Check if CMakeLists.txt exists
     if (-not (Test-Path "CMakeLists.txt")) {
-        Write-Host "❌ ERROR: CMakeLists.txt not found in current directory!" -ForegroundColor Red
-        Write-Host "Current directory: $(Get-Location)" -ForegroundColor Gray
+        Write-Error "CMakeLists.txt not found in current directory!"
+        Write-Verbose "Current directory: $(Get-Location)"
         return $false
     }
 
     # Create build directory
     if (Test-Path $buildDir) {
-        Write-Host "Cleaning old build: $buildDir" -ForegroundColor Yellow
+        Write-Verbose "Cleaning old build: $buildDir"
         Remove-Item -Recurse -Force $buildDir
     }
     New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
@@ -156,60 +170,58 @@ function Build-SingleConfiguration {
         }
         $cmakeArgs += "-DCMAKE_BUILD_TYPE=$Config"
 
-        Write-Host "Configuring..." -ForegroundColor Yellow
-        Write-Host "Command: cmake $($cmakeArgs -join ' ')" -ForegroundColor Gray
+        Write-Output "Configuring..."
+        Write-Verbose "Command: cmake $($cmakeArgs -join ' ')"
 
         # Run CMake configure
         $configOutput = & cmake @cmakeArgs 2>&1
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "❌ Configuration failed!" -ForegroundColor Red
-            Write-Host "CMake output:" -ForegroundColor Red
-            Write-Host $configOutput -ForegroundColor Red
+            Write-Error "Configuration failed!"
+            Write-Error "CMake output: $configOutput"
             return $false
         }
 
-        Write-Host "✓ Configuration successful" -ForegroundColor Green
+        Write-Output "✓ Configuration successful"
 
         # Run build
-        Write-Host "Building..." -ForegroundColor Yellow
-        Write-Host "Command: cmake --build . --config $Config" -ForegroundColor Gray
+        Write-Output "Building..."
+        Write-Verbose "Command: cmake --build . --config $Config"
 
         $buildOutput = & cmake --build . --config $Config 2>&1
 
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "❌ Build failed!" -ForegroundColor Red
-            Write-Host "Build output:" -ForegroundColor Red
-            Write-Host $buildOutput -ForegroundColor Red
+            Write-Error "Build failed!"
+            Write-Error "Build output: $buildOutput"
             return $false
         }
 
-        Write-Host "✓ Build successful: $targetName" -ForegroundColor Green
+        Write-Output "✓ Build successful: $targetName"
 
         # Check if executable was created and copied
         $exePath = "$originalLocation\Run\CMake\$targetName.exe"
         if (Test-Path $exePath) {
             $exeSize = [math]::Round((Get-Item $exePath).Length / 1KB, 1)
-            Write-Host "✓ Executable created: Run\CMake\$targetName.exe ($exeSize KB)" -ForegroundColor Green
+            Write-Output "✓ Executable created: Run\CMake\$targetName.exe ($exeSize KB)"
         } else {
-            Write-Host "⚠️  Executable not found at: Run\CMake\$targetName.exe" -ForegroundColor Yellow
+            Write-Warning "Executable not found at: Run\CMake\$targetName.exe"
         }
 
         return $true
 
     } catch {
-        Write-Host "❌ Build failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Error "Build failed: $($_.Exception.Message)"
         return $false
     } finally {
         Set-Location $originalLocation
     }
 }
 
-# Build all configurations
-function Build-AllConfigurations {
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "   Building All Configurations" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
+# Build all configuration
+function Build-AllConfiguration {
+    Write-Output "========================================"
+    Write-Output "   Building All Configurations"
+    Write-Output "========================================"
 
     $configurations = @(
         @{ Config = "Debug"; Platform = "x64" },
@@ -237,61 +249,60 @@ function Build-AllConfigurations {
         }
 
         if ($success) { $successCount++ }
-        Write-Host ""
+        Write-Output ""
     }
 
     $overallEndTime = Get-Date
     $overallDuration = $overallEndTime - $overallStartTime
 
     # Build summary
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host "   Build Summary" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Output "========================================"
+    Write-Output "   Build Summary"
+    Write-Output "========================================"
 
     foreach ($result in $results) {
         $statusIcon = if ($result.Success) { "✓" } else { "❌" }
-        $statusColor = if ($result.Success) { "Green" } else { "Red" }
 
-        Write-Host "$statusIcon $($result.Target)" -ForegroundColor $statusColor
-        Write-Host "   Duration: $($result.Duration.TotalSeconds.ToString('F1'))s" -ForegroundColor Gray
+        Write-Output "$statusIcon $($result.Target)"
+        Write-Output "   Duration: $($result.Duration.TotalSeconds.ToString('F1'))s"
     }
 
-    Write-Host ""
-    Write-Host "Results: $successCount/$totalCount builds successful" -ForegroundColor $(if ($successCount -eq $totalCount) { "Green" } else { "Yellow" })
-    Write-Host "Total time: $($overallDuration.TotalSeconds.ToString('F1')) seconds" -ForegroundColor Gray
+    Write-Output ""
+    Write-Output "Results: $successCount/$totalCount builds successful"
+    Write-Output "Total time: $($overallDuration.TotalSeconds.ToString('F1')) seconds"
 
     if ($successCount -eq $totalCount) {
-        Write-Host ""
-        Write-Host "🎉 All builds completed successfully!" -ForegroundColor Green
+        Write-Output ""
+        Write-Output "🎉 All builds completed successfully!"
 
         # Show generated files
         $runDir = "Run\CMake"
         if (Test-Path $runDir) {
-            Write-Host ""
-            Write-Host "Generated executables:" -ForegroundColor Yellow
+            Write-Output ""
+            Write-Output "Generated executables:"
             $exeFiles = Get-ChildItem -Path $runDir -Filter "*.exe" | Sort-Object Name
             foreach ($exe in $exeFiles) {
                 $size = [math]::Round($exe.Length / 1KB, 1)
-                Write-Host "  📁 $($exe.Name) ($size KB)" -ForegroundColor White
+                Write-Output "  📁 $($exe.Name) ($size KB)"
             }
 
-            Write-Host ""
-            Write-Host "Directory structure:" -ForegroundColor Yellow
-            Write-Host "📁 Run\CMake\" -ForegroundColor White
-            Write-Host "   ├── FirstCMake_Debug_x64.exe" -ForegroundColor Gray
-            Write-Host "   ├── FirstCMake_Release_x64.exe" -ForegroundColor Gray
-            Write-Host "   ├── FirstCMake_Debug_x86.exe" -ForegroundColor Gray
-            Write-Host "   └── FirstCMake_Release_x86.exe" -ForegroundColor Gray
-            Write-Host ""
-            Write-Host "📁 Temporary\CMake\" -ForegroundColor White
-            Write-Host "   ├── FirstCMake_Debug_x64\" -ForegroundColor Gray
-            Write-Host "   ├── FirstCMake_Release_x64\" -ForegroundColor Gray
-            Write-Host "   ├── FirstCMake_Debug_x86\" -ForegroundColor Gray
-            Write-Host "   └── FirstCMake_Release_x86\" -ForegroundColor Gray
+            Write-Output ""
+            Write-Output "Directory structure:"
+            Write-Output "📁 Run\CMake\"
+            Write-Output "   ├── FirstCMake_Debug_x64.exe"
+            Write-Output "   ├── FirstCMake_Release_x64.exe"
+            Write-Output "   ├── FirstCMake_Debug_x86.exe"
+            Write-Output "   └── FirstCMake_Release_x86.exe"
+            Write-Output ""
+            Write-Output "📁 Temporary\CMake\"
+            Write-Output "   ├── FirstCMake_Debug_x64\"
+            Write-Output "   ├── FirstCMake_Release_x64\"
+            Write-Output "   ├── FirstCMake_Debug_x86\"
+            Write-Output "   └── FirstCMake_Release_x86\"
         }
     } else {
-        Write-Host ""
-        Write-Host "⚠️  Some builds failed. Check the errors above." -ForegroundColor Yellow
+        Write-Output ""
+        Write-Warning "Some builds failed. Check the errors above."
     }
 }
 
@@ -305,37 +316,26 @@ try {
 
     # Clean mode
     if ($Clean) {
-        Clean-BuildOutput
+        Remove-BuildOutput
         return
     }
 
     # Build all configurations
     if ($All) {
-        Build-AllConfigurations
+        Build-AllConfiguration
         return
     }
 
     # Build specific configuration
     if ($Configuration -and $Platform) {
-        if ($Configuration -notin @("Debug", "Release")) {
-            Write-Host "Error: Configuration must be 'Debug' or 'Release'" -ForegroundColor Red
-            Show-Help
-            return
-        }
-        if ($Platform -notin @("x64", "x86")) {
-            Write-Host "Error: Platform must be 'x64' or 'x86'" -ForegroundColor Red
-            Show-Help
-            return
-        }
-
         $success = Build-SingleConfiguration -Config $Configuration -Platform $Platform
 
         if ($success) {
-            Write-Host ""
-            Write-Host "🎉 Build completed successfully!" -ForegroundColor Green
+            Write-Output ""
+            Write-Output "🎉 Build completed successfully!"
         } else {
-            Write-Host ""
-            Write-Host "❌ Build failed!" -ForegroundColor Red
+            Write-Output ""
+            Write-Error "Build failed!"
         }
         return
     }
@@ -345,31 +345,30 @@ try {
 
     switch ($choice.Mode) {
         "All" {
-            Build-AllConfigurations
+            Build-AllConfiguration
         }
         "Single" {
             $success = Build-SingleConfiguration -Config $choice.Config -Platform $choice.Platform
             if ($success) {
-                Write-Host ""
-                Write-Host "🎉 Build completed successfully!" -ForegroundColor Green
+                Write-Output ""
+                Write-Output "🎉 Build completed successfully!"
             }
         }
         "Clean" {
-            Clean-BuildOutput
+            Remove-BuildOutput
         }
         "Exit" {
-            Write-Host "Goodbye!" -ForegroundColor Cyan
+            Write-Output "Goodbye!"
             return
         }
     }
 
 } catch {
-    Write-Host "An unexpected error occurred: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Stack trace:" -ForegroundColor Gray
-    Write-Host $_.ScriptStackTrace -ForegroundColor Gray
+    Write-Error "An unexpected error occurred: $($_.Exception.Message)"
+    Write-Verbose "Stack trace: $($_.ScriptStackTrace)"
 } finally {
     if (-not $Help -and -not ($choice.Mode -eq "Exit")) {
-        Write-Host ""
+        Write-Output ""
         Read-Host "Press any key to exit"
     }
 }
