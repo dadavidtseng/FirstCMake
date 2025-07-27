@@ -13,6 +13,7 @@
 //----------------------------------------------------------------------------------------------------
 namespace Utils
 {
+    //----------------------------------------------------------------------------------------------------
     // 使用 concept 的模板實作
     template <Numeric T>
     T Add(T a, T b)
@@ -25,16 +26,18 @@ namespace Utils
     template double Add<double>(double a, double b);
     template float  Add<float>(float a, float b);
 
+    //----------------------------------------------------------------------------------------------------
     std::string ToUpper(const std::string& str)
     {
         std::string result = str;
         // 改用傳統的 std::transform（更好的跨平台相容性）
         std::transform(result.begin(), result.end(), result.begin(),
-                      [](unsigned char c) { return std::toupper(c); });
+                       [](unsigned char c) { return std::toupper(c); });
         return result;
     }
 
-    void ShowWelcome(const std::string& projectName)
+    //----------------------------------------------------------------------------------------------------
+    void ShowWelcome(std::string const& projectName)
     {
         printf("================================\n");
         printf("  Welcome to %s Project\n", projectName.c_str());
@@ -42,6 +45,7 @@ namespace Utils
         printf("================================\n");
     }
 
+    //----------------------------------------------------------------------------------------------------
     std::vector<std::string> GetFeatures()
     {
         return {
@@ -55,6 +59,7 @@ namespace Utils
         };
     }
 
+    //----------------------------------------------------------------------------------------------------
     // 改用傳統方式的函式（移除 ranges template）
     void PrintRange(const std::vector<std::string>& range, const std::string& title)
     {
@@ -66,6 +71,7 @@ namespace Utils
         }
     }
 
+    //----------------------------------------------------------------------------------------------------
     // 簡化版的格式化函式
     template <typename... Args>
     std::string FormatString(const std::string& format, Args&&... args)
@@ -75,6 +81,7 @@ namespace Utils
         return format; // 簡化實作
     }
 
+    //----------------------------------------------------------------------------------------------------
     // 明確實例化
-    template std::string FormatString<>(const std::string& format);
+    template std::string FormatString<>(std::string const & format);
 }
